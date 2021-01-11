@@ -51,6 +51,7 @@ int main (int argc, char* argv[]) {
 
 	square.posX = 500;
 	square.posY = 500;
+	SDL_Texture* texture = IMG_LoadTexture(renderer, "pic.png");
 
 	while (handleEvent(event)) {
         SDL_PollEvent(&event);
@@ -70,7 +71,6 @@ int main (int argc, char* argv[]) {
 		if (square.right)
 			square.posX += 4;
 
-		SDL_Texture* texture = IMG_LoadTexture(renderer, "pic.png");
 		SDL_Rect dest = { .x = square.posX, .y = square.posY, .w = 30, .h = 30 };
 		SDL_RenderCopy(renderer, texture, NULL, &dest);
 
