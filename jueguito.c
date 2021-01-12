@@ -5,8 +5,9 @@
 #define RELEASED 0
 
 struct Sprite {
-	int posX, posY,
-		up, down, left, right;
+	SDL_Rect rect;
+	int up, down, left, right;
+	SDL_Texture* texture;
 } square;
 
 void handleKey(int state, SDL_KeyboardEvent *keyEvent) {
@@ -44,14 +45,20 @@ int main (int argc, char* argv[]) {
 	SDL_Event event;
 	SDL_CreateWindowAndRenderer(10, 10, SDL_WINDOW_RESIZABLE, &window, &renderer);
 	
-	int width, height;
-	SDL_GetWindowSize(window, &width, &height);
+	int wWidth, wHeight;
 
-	int ancho = 10;
+	square.rect.x = 500;
+	square.rect.y = 500;
+	square.rect.w = 100;
+	square.rect.h = 100;
 
-	square.posX = 500;
-	square.posY = 500;
-	SDL_Texture* texture = IMG_LoadTexture(renderer, "pic.png");
+	square.texture = IMG_LoadTexture(renderer, "drawing.svg");
+
+	SDL_Rect collisionBox = { .x = 600, .y = 600, .w = 40, .h = 40 };
+
+	int srcY[6] = {0, 188, 376, 564, 376, 188};
+	int gifFrame = 0;
+	int frameCounter = 0;
 
 	while (handleEvent(event)) {
         SDL_PollEvent(&event);
@@ -59,25 +66,49 @@ int main (int argc, char* argv[]) {
         SDL_SetRenderDrawColor(renderer, 0x00, 0x00, 0x00, 0x00);
         SDL_RenderClear(renderer);
 
-		if (square.up)
-			square.posY -= 4;
+		SDL_GetWindowSize(window, &wWidth, &wHeight);
 
-		if (square.down)
-			square.posY += 4;
+        SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0x00);
+		SDL_RenderDrawRect(renderer, &collisionBox);
 
-		if (square.left)
-			square.posX -= 4;
+		SDL_Rect possibleMovement =  square.rect;
+		
+		if (square.up && square.rect.y - 4 >= 0) {
+		//	possibleMovement.y -= 4;
+		//	if (!SDL_HasIntersection(&possibleMovement, &collisionBox))
+				square.rect.y -= 4;
+		}
 
-		if (square.right)
-			square.posX += 4;
+		if (square.down && square.rect.y + 4 <= wHeight - square.rect.h) {
+		//	possibleMovement.y += 4;
+		//	if (!SDL_HasIntersection(&possibleMovement, &collisionBox))
+				square.rect.y += 4;
+		}
 
-		SDL_Rect dest = { .x = square.posX, .y = square.posY, .w = 30, .h = 30 };
-		SDL_RenderCopy(renderer, texture, NULL, &dest);
+		if (square.left && square.rect.x - 4 >= 0) {
+		//	possibleMovement.x -= 4;
+		//	if (!SDL_HasIntersection(&possibleMovement, &collisionBox))
+				square.rect.x -= 4;
+		}
+
+		if (square.right && square.rect.x + 4 <= wWidth - square.rect.w) {
+		//	possibleMovement.x += 4;
+		//	if (!SDL_HasIntersection(&possibleMovement, &collisionBox))
+				square.rect.x += 4;
+		}
+
+		SDL_Rect srcrect = { 0, srcY[gifFrame], 174, 159 };
+		SDL_RenderCopy(renderer, square.texture, &srcrect, &square.rect);
 
         SDL_RenderPresent(renderer);
 		SDL_Delay(16);
+
+		frameCounter = frameCounter == 59 ? 0 : frameCounter + 1;
+		gifFrame = frameCounter / 5;
     }
 
+	SDL_DestroyTexture(square.texture);
+	SDL_DestroyRenderer(renderer);
 	SDL_Quit();
 	return 0;
 }
