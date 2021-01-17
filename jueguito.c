@@ -16,9 +16,9 @@ struct Personaje {
 	SDL_Rect hitbox;
 	int up, down, left, right;
 	unsigned int banderasAnimacion;
-	// ←... ---- ---1 XXXX 1XX1 XXXX
+	// ←... ---- ---1 XXXX 1XX1 DXXX
 	//              ┃      ┃  ┃
-	//              ┃      ┃  ┗▶ Flota, píxeles
+	//              ┃      ┃  ┗▶ Flota, direccion, píxeles
 	//              ┃      ┗━━━▶ Orientación, 4 direcciones
 	//              ┗━━━━━━━━━━▶ Animado, frames
 	SDL_Rect textureRect;
@@ -115,17 +115,21 @@ void dibujarPersonaje(struct Personaje* pj, SDL_Renderer* renderer) {
 			pjFlip = 0;
 			break;
 	}
-	// ←... ---- ---1 XXXX 1XX1 XXXX
-	if (pj->left | pj->right | (pj->banderasAnimacion & 0x0000000F)) {
-		if (!(pj->left | pj->right) || (pj->banderasAnimacion & 0x0000000F) >= 0x0) {
-			pj->banderasAnimacion -= 1;
-		} else if ((pj->banderasAnimacion & 0x0000000F) <= 0xF) {
-			pj->banderasAnimacion += 1;
-		}
+	// ←... ---- ---1 XXXX 1XX1 DXXX D = 1, sube
+	if (pj->left | pj->right | (pj->banderasAnimacion & 0x00000007)) {
+		if (!(pj->left | pj->right) || (pj->banderasAnimacion & 0x00000007) == 0x7)
+			pj->banderasAnimacion &= 0xFFFFFFF7;
+		else if ((pj->banderasAnimacion & 0x00000007) == 0x0)
+			pj->banderasAnimacion |= 0x00000008;
+
+		if (pj->banderasAnimacion & 0x00000008)
+			pj->banderasAnimacion++;
+		else
+			pj->banderasAnimacion--;
 	}
 
 	pj->textureRect.x = pj->hitbox.x - 8;
-	pj->textureRect.y = pj->hitbox.y - 8 - (pj->banderasAnimacion & 0xF);
+	pj->textureRect.y = pj->hitbox.y - 8 - (pj->banderasAnimacion & 0x7);
 	SDL_RenderCopyEx(renderer, pj->texture, NULL, &pj->textureRect, 0, NULL, pjFlip);
 }
 
@@ -151,17 +155,26 @@ int main (int argc, char *argv[]) {
 
 	SDL_Texture* bgTexture = textures[1];
 
+	Uint32 timeStepMs = 1000 / 60;
+	Uint32 nextGameStep = SDL_GetTicks();
+
 	while (handleEvent(event, &jugador)) {
+
         SDL_PollEvent(&event);
 
 		SDL_GetWindowSize(window, &wWidth, &wHeight);
 		
-		fillBg(wWidth, wHeight, bgTexture, renderer);
 		movPersonaje(wWidth, wHeight, &jugador);
-		dibujarPersonaje(&jugador, renderer);
+		Uint32 now = SDL_GetTicks();
 
-        SDL_RenderPresent(renderer);
-		SDL_Delay(16);
+		if (nextGameStep <= now) {
+			fillBg(wWidth, wHeight, bgTexture, renderer);
+			dibujarPersonaje(&jugador, renderer);
+			SDL_RenderPresent(renderer);
+		}
+
+		nextGameStep += timeStepMs;
+		SDL_Delay(nextGameStep - now);
     }
 
 	freeTextures(FREE, 2, textures);
