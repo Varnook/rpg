@@ -1,16 +1,28 @@
 #include "SDL2/SDL.h"
 #include "SDL2/SDL_image.h"
 #include <stdio.h>
+
+// Constantes 
 #define PRESSED  1
 #define RELEASED 0
+
+#define LOAD 1
+#define FREE 1
+
+#define ARRIBA -1
+#define ABAJO   1
 
 struct Personaje {
 	SDL_Rect hitbox;
 	int up, down, left, right;
-	int direction;
+	unsigned int banderasAnimacion;
+	// ←... ---- ---1 XXXX 1XX1 XXXX
+	//              ┃      ┃  ┃
+	//              ┃      ┃  ┗▶ Flota, píxeles
+	//              ┃      ┗━━━▶ Orientación, 4 direcciones
+	//              ┗━━━━━━━━━━▶ Animado, frames
 	SDL_Rect textureRect;
 	SDL_Texture* texture;
-	int bobbingPos, bobbingMov;
 };
 
 void textureBank(int load, SDL_Renderer* renderer, int length, char** files, SDL_Texture** textures) {
@@ -19,9 +31,10 @@ void textureBank(int load, SDL_Renderer* renderer, int length, char** files, SDL
 			textures[i] = IMG_LoadTexture(renderer, files[i]);
 }
 
-void freeTextures(int length, SDL_Texture** textures) {
-	for (int i = 0; i < length; i++) 
-		SDL_DestroyTexture(textures[i]);
+void freeTextures(int free, int length, SDL_Texture** textures) {
+	if (free)
+		for (int i = 0; i < length; i++) 
+			SDL_DestroyTexture(textures[i]);
 }
 
 void handleKey(int state, SDL_KeyboardEvent *keyEvent, struct Personaje* jugador) {
@@ -69,9 +82,12 @@ void movPersonaje(int wWidth, int wHeight, struct Personaje* pj) {
 	SDL_Rect possibleMovement =  pj->hitbox;
 	
 	if (pj->right)
-		pj->direction = 0;
-	if (pj->left)
-		pj->direction = 1;
+		pj->banderasAnimacion &= 0xFFFFFFFF9F;
+
+	if (pj->left)  {
+		pj->banderasAnimacion &= 0xFFFFFFFF9F;
+		pj->banderasAnimacion |= 0x40;
+	}
 
 	if (pj->up && pj->hitbox.y - 4 >= 0)
 		pj->hitbox.y -= 4;
@@ -87,19 +103,29 @@ void movPersonaje(int wWidth, int wHeight, struct Personaje* pj) {
 }
 
 void dibujarPersonaje(struct Personaje* pj, SDL_Renderer* renderer) {
-	SDL_RendererFlip pjFlip = pj->direction ? SDL_FLIP_HORIZONTAL : 0;
-
-	if (pj->left | pj->right | pj->bobbingPos) {
-		if (!(pj->left | pj->right) || pj->bobbingPos <= -16) {
-			pj->bobbingMov = 1;
-		} else if (pj->bobbingPos >= 0) {
-			pj->bobbingMov = -1;
+	SDL_RendererFlip pjFlip;
+	switch (pj->banderasAnimacion & 0x00000060) {
+		case 0:
+			pjFlip = 0;
+			break;
+		case 0x40:
+			pjFlip = SDL_FLIP_HORIZONTAL;
+			break;
+		default:
+			pjFlip = 0;
+			break;
+	}
+	// ←... ---- ---1 XXXX 1XX1 XXXX
+	if (pj->left | pj->right | (pj->banderasAnimacion & 0x0000000F)) {
+		if (!(pj->left | pj->right) || (pj->banderasAnimacion & 0x0000000F) >= 0x0) {
+			pj->banderasAnimacion -= 1;
+		} else if ((pj->banderasAnimacion & 0x0000000F) <= 0xF) {
+			pj->banderasAnimacion += 1;
 		}
-		pj->bobbingPos += pj->bobbingMov;
 	}
 
 	pj->textureRect.x = pj->hitbox.x - 8;
-	pj->textureRect.y = pj->hitbox.y - 8 + pj->bobbingPos;
+	pj->textureRect.y = pj->hitbox.y - 8 - (pj->banderasAnimacion & 0xF);
 	SDL_RenderCopyEx(renderer, pj->texture, NULL, &pj->textureRect, 0, NULL, pjFlip);
 }
 
@@ -113,15 +139,14 @@ int main (int argc, char *argv[]) {
 
 	char* files[2] = {"ojo.png", "grassTiles.png"};
 	SDL_Texture* textures[2];
-	textureBank(1, renderer, 2, files, textures);
+	textureBank(LOAD, renderer, 2, files, textures);
 
 	struct Personaje jugador = {
 		.hitbox = { .x = 8, .y = 8, .w = 48, .h = 48 },
 		.up = 0, .down = 0, .left = 0, .right = 0,
-		.direction = 0,
+		.banderasAnimacion = 0x00001090,
 		.textureRect = { .x = 0, .y = 0, .w = 64, .h = 64 },
 		.texture = textures[0],
-		.bobbingPos = 0, .bobbingMov = 1
 	};
 
 	SDL_Texture* bgTexture = textures[1];
@@ -139,7 +164,7 @@ int main (int argc, char *argv[]) {
 		SDL_Delay(16);
     }
 
-	freeTextures(2, textures);
+	freeTextures(FREE, 2, textures);
 	SDL_DestroyRenderer(renderer);
 	SDL_DestroyWindow(window);
 	SDL_Quit();
