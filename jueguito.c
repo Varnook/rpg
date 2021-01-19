@@ -16,9 +16,9 @@ struct Personaje {
 	SDL_Rect hitbox;
 	int up, down, left, right;
 	unsigned int banderasAnimacion;
-	// ←... ---- ---1 XXXX 1XX1 DXXX
-	//              ┃      ┃  ┃
-	//              ┃      ┃  ┗▶ Flota, direccion, píxeles
+	// ←... ---- ---1 XXXX XX1D XXXX
+	//              ┃      ┃ ┃ 
+	//              ┃      ┃ ┗━▶ Flota, direccion, píxeles
 	//              ┃      ┗━━━▶ Orientación, 4 direcciones
 	//              ┗━━━━━━━━━━▶ Animado, frames
 	SDL_Rect textureRect;
@@ -82,10 +82,10 @@ void movPersonaje(int wWidth, int wHeight, struct Personaje* pj) {
 	SDL_Rect possibleMovement =  pj->hitbox;
 	
 	if (pj->right)
-		pj->banderasAnimacion &= 0xFFFFFFFF9F;
+		pj->banderasAnimacion &= 0xFFFFFFFF3F;
 
 	if (pj->left)  {
-		pj->banderasAnimacion &= 0xFFFFFFFF9F;
+		pj->banderasAnimacion &= 0xFFFFFFFF3F;
 		pj->banderasAnimacion |= 0x40;
 	}
 
@@ -115,21 +115,21 @@ void dibujarPersonaje(struct Personaje* pj, SDL_Renderer* renderer) {
 			pjFlip = 0;
 			break;
 	}
-	// ←... ---- ---1 XXXX 1XX1 DXXX D = 1, sube
-	if (pj->left | pj->right | (pj->banderasAnimacion & 0x00000007)) {
-		if (!(pj->left | pj->right) || (pj->banderasAnimacion & 0x00000007) == 0x7)
-			pj->banderasAnimacion &= 0xFFFFFFF7;
-		else if ((pj->banderasAnimacion & 0x00000007) == 0x0)
-			pj->banderasAnimacion |= 0x00000008;
+	// ←... ---- ---1 XXXX XX1D XXXX D = 1, sube
+	if (pj->left | pj->right | (pj->banderasAnimacion & 0x0000000F)) {
+		if (!(pj->left | pj->right) || (pj->banderasAnimacion & 0x0000000F) == 0xF)
+			pj->banderasAnimacion &= 0xFFFFFFEF;
+		else if ((pj->banderasAnimacion & 0x0000000F) == 0x0)
+			pj->banderasAnimacion |= 0x00000010;
 
-		if (pj->banderasAnimacion & 0x00000008)
+		if (pj->banderasAnimacion & 0x00000010)
 			pj->banderasAnimacion++;
 		else
 			pj->banderasAnimacion--;
 	}
 
 	pj->textureRect.x = pj->hitbox.x - 8;
-	pj->textureRect.y = pj->hitbox.y - 8 - (pj->banderasAnimacion & 0x7);
+	pj->textureRect.y = pj->hitbox.y - 8 - (pj->banderasAnimacion & 0xF);
 	SDL_RenderCopyEx(renderer, pj->texture, NULL, &pj->textureRect, 0, NULL, pjFlip);
 }
 
